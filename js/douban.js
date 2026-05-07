@@ -458,9 +458,9 @@ async function fetchDoubanData(url) {
 
     try {
         // 添加鉴权参数到代理URL
-        const proxiedUrl = await window.ProxyAuth?.addAuthToProxyUrl ? 
-            await window.ProxyAuth.addAuthToProxyUrl(PROXY_URL + encodeURIComponent(url)) :
-            PROXY_URL + encodeURIComponent(url);
+        const proxiedUrl = window.ProxyAuth?.addAuthToProxyUrl
+            ? await window.ProxyAuth.addAuthToProxyUrl(PROXY_URL + encodeURIComponent(url))
+            : PROXY_URL + encodeURIComponent(url);
             
         // 尝试直接访问（豆瓣API可能允许部分CORS请求）
         const response = await fetch(proxiedUrl, fetchOptions);
@@ -530,9 +530,9 @@ async function renderDoubanCards(data, container) {
             
             // 处理图片URL - 使用代理并添加鉴权
             const originalCoverUrl = item.cover;
-            const proxiedCoverUrl = await window.ProxyAuth.addAuthToProxyUrl(
-                PROXY_URL + encodeURIComponent(originalCoverUrl)
-            );
+            const proxiedCoverUrl = window.ProxyAuth?.addAuthToProxyUrl
+                ? await window.ProxyAuth.addAuthToProxyUrl(PROXY_URL + encodeURIComponent(originalCoverUrl))
+                : PROXY_URL + encodeURIComponent(originalCoverUrl);
             // 为不同设备优化卡片布局
             card.innerHTML = `
                 <div class="relative w-full aspect-[2/3] overflow-hidden cursor-pointer" onclick="fillAndSearchWithDouban('${safeTitle}')">
