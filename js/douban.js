@@ -427,8 +427,8 @@ function renderRecommend(tag, pageLimit, pageStart) {
     
     // 使用通用请求函数
     fetchDoubanData(target)
-        .then(async data => {
-            await renderDoubanCards(data, container);
+        .then(data => {
+            renderDoubanCards(data, container);
         })
         .catch(error => {
             console.error("获取豆瓣数据失败：", error);
@@ -500,7 +500,7 @@ async function fetchDoubanData(url) {
 }
 
 // 抽取渲染豆瓣卡片的逻辑到单独函数
-async function renderDoubanCards(data, container) {
+function renderDoubanCards(data, container) {
     // 创建文档片段以提高性能
     const fragment = document.createDocumentFragment();
     
@@ -514,7 +514,7 @@ async function renderDoubanCards(data, container) {
         fragment.appendChild(emptyEl);
     } else {
         // 循环创建每个影视卡片
-        for (const item of data.subjects) {
+        data.subjects.forEach(item => {
             const card = document.createElement("div");
             card.className = "bg-[#111] hover:bg-[#222] transition-all duration-300 rounded-lg overflow-hidden flex flex-col transform hover:scale-105 shadow-md hover:shadow-lg";
             
@@ -528,15 +528,12 @@ async function renderDoubanCards(data, container) {
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;');
             
-            // 处理图片URL - 使用代理并添加鉴权
-            const originalCoverUrl = item.cover;
-            const proxiedCoverUrl = window.ProxyAuth?.addAuthToProxyUrl
-                ? await window.ProxyAuth.addAuthToProxyUrl(PROXY_URL + encodeURIComponent(originalCoverUrl))
-                : PROXY_URL + encodeURIComponent(originalCoverUrl);
+            // 直接使用豆瓣图片URL，添加no-referrer避免referrer问题
+            const coverUrl = item.cover;
             // 为不同设备优化卡片布局
             card.innerHTML = `
                 <div class="relative w-full aspect-[2/3] overflow-hidden cursor-pointer" onclick="fillAndSearchWithDouban('${safeTitle}')">
-                    <img src="${proxiedCoverUrl}" alt="${safeTitle}" 
+                    <img src="${coverUrl}" alt="${safeTitle}" 
                         class="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
                         loading="lazy" referrerpolicy="no-referrer">
                     <div class="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-60"></div>
