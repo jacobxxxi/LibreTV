@@ -442,16 +442,13 @@ async function renderRecommend(tag, pageLimit, pageStart) {
 
 async function fetchDoubanData(url) {
     try {
-        // 通过服务器代理请求，避免CORS问题
-        const proxyUrl = `/proxy/${encodeURIComponent(url)}`;
-        
-        // 添加代理认证参数
-        const authenticatedUrl = await window.ProxyAuth.addAuthToProxyUrl(proxyUrl);
-        
-        const response = await fetch(authenticatedUrl);
+        // 使用豆瓣专用代理端点（无需认证）
+        const proxyUrl = `/douban?url=${encodeURIComponent(url)}`;
+        const response = await fetch(proxyUrl);
         
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.error || 'Unknown'}`);
         }
         
         return await response.json();
