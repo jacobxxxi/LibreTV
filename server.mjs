@@ -235,6 +235,49 @@ app.use((req, res) => {
   res.status(404).send('页面未找到');
 });
 
+// 豆瓣图片代理端点（无需认证，绕过防盗链）
+app.get('/douban-image', async (req, res) => {
+  const imageUrl = req.query.url;
+  if (!imageUrl) {
+    return res.status(400).send('Missing url parameter');
+  }
+  
+  try {
+    const decodedUrl = decodeURIComponent(imageUrl);
+    
+    // 验证URL是否是豆瓣图片
+    if (!decodedUrl.includes('doubanio.com') && !decodedUrl.includes('douban.com')) {
+      return res.status(403).send('Only douban images are allowed');
+    }
+    
+    log(`豆瓣图片代理请求: ${decodedUrl}`);
+    
+    const response = await axios({
+      method: 'get',
+      url: decodedUrl,
+      responseType: 'stream',
+      timeout: config.timeout,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Referer': 'https://movie.douban.com/'
+      }
+    });
+    
+    // 设置正确的Content-Type
+    if (response.headers['content-type']) {
+      res.setHeader('Content-Type', response.headers['content-type']);
+    }
+    
+    // 缓存1天
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    
+    response.data.pipe(res);
+  } catch (error) {
+    console.error('豆瓣图片代理失败:', error.message);
+    res.status(500).send('图片代理失败');
+  }
+});
+
 // 启动服务器
 app.listen(config.port, () => {
   console.log(`服务器运行在 http://localhost:${config.port}`);
