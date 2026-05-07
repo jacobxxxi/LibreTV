@@ -495,8 +495,8 @@ function renderDoubanCards(data, container) {
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;');
             
-            // 使用allorigins代理图片
-            const coverUrl = `https://api.allorigins.win/proxy?url=${encodeURIComponent(item.cover)}`;
+            // 直接使用豆瓣原始图片URL
+            const coverUrl = item.cover;
             // 为不同设备优化卡片布局
             card.innerHTML = `
                 <div class="relative w-full aspect-[2/3] overflow-hidden cursor-pointer" onclick="fillAndSearchWithDouban('${safeTitle}')">
