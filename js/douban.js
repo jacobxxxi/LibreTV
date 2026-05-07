@@ -407,7 +407,7 @@ function fetchDoubanTags() {
 }
 
 // 渲染热门推荐内容
-function renderRecommend(tag, pageLimit, pageStart) {
+async function renderRecommend(tag, pageLimit, pageStart) {
     const container = document.getElementById("douban-results");
     if (!container) return;
 
@@ -425,37 +425,34 @@ function renderRecommend(tag, pageLimit, pageStart) {
     
     const target = `https://movie.douban.com/j/search_subjects?type=${doubanMovieTvCurrentSwitch}&tag=${tag}&sort=recommend&page_limit=${pageLimit}&page_start=${pageStart}`;
     
-    // 使用通用请求函数
-    fetchDoubanData(target)
-        .then(data => {
-            renderDoubanCards(data, container);
-        })
-        .catch(error => {
-            console.error("获取豆瓣数据失败：", error);
-            container.innerHTML = `
-                <div class="col-span-full text-center py-8">
-                    <div class="text-red-400">❌ 获取豆瓣数据失败，请稍后重试</div>
-                    <div class="text-gray-500 text-sm mt-2">提示：使用VPN可能有助于解决此问题</div>
-                </div>
-            `;
-        });
+    try {
+        // 使用通用请求函数
+        const data = await fetchDoubanData(target);
+        await renderDoubanCards(data, container);
+    } catch (error) {
+        console.error("获取豆瓣数据失败：", error);
+        container.innerHTML = `
+            <div class="col-span-full text-center py-8">
+                <div class="text-red-400">❌ 获取豆瓣数据失败，请稍后重试</div>
+                <div class="text-gray-500 text-sm mt-2">提示：使用VPN可能有助于解决此问题</div>
+            </div>
+        `;
+    }
 }
 
 async function fetchDoubanData(url) {
     try {
-        // 通过服务器代理请求，避免CORS问题
-        const proxyUrl = `/proxy/${encodeURIComponent(url)}`;
-        
-        // 添加代理认证参数
-        const authenticatedUrl = await window.ProxyAuth.addAuthToProxyUrl(proxyUrl);
-        
-        const response = await fetch(authenticatedUrl);
+        // 使用 allorigins.win 代理绕过CORS
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+        const response = await fetch(proxyUrl);
         
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         
-        return await response.json();
+        const data = await response.json();
+        // allorigins.win 返回 { contents: '...' }，需要解析contents
+        return JSON.parse(data.contents);
     } catch (err) {
         console.error("豆瓣 API 请求失败：", err);
         throw err;
@@ -463,7 +460,7 @@ async function fetchDoubanData(url) {
 }
 
 // 抽取渲染豆瓣卡片的逻辑到单独函数
-function renderDoubanCards(data, container) {
+async function renderDoubanCards(data, container) {
     // 创建文档片段以提高性能
     const fragment = document.createDocumentFragment();
     
@@ -478,10 +475,6 @@ function renderDoubanCards(data, container) {
     } else {
         // 循环创建每个影视卡片
         data.subjects.forEach(item => {
-            const card = document.createElement("div");
-            card.className = "bg-[#111] hover:bg-[#222] transition-all duration-300 rounded-lg overflow-hidden flex flex-col transform hover:scale-105 shadow-md hover:shadow-lg";
-            
-            // 生成卡片内容，确保安全显示（防止XSS）
             const safeTitle = item.title
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;')
@@ -491,20 +484,23 @@ function renderDoubanCards(data, container) {
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;');
             
-            // 直接使用豆瓣原始图片URL
-            const coverUrl = item.cover;
+            // 使用 allorigins.win/raw 代理图片，绕过防盗链
+            const proxyImageUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(item.cover)}`;
+            const card = document.createElement("div");
+            card.className = "bg-[#111] hover:bg-[#222] transition-all duration-300 rounded-lg overflow-hidden flex flex-col transform hover:scale-105 shadow-md hover:shadow-lg";
+            
             // 为不同设备优化卡片布局
             card.innerHTML = `
                 <div class="relative w-full aspect-[2/3] overflow-hidden cursor-pointer" onclick="fillAndSearchWithDouban('${safeTitle}')">
-                    <img src="${coverUrl}" alt="${safeTitle}" 
+                    <img src="${proxyImageUrl}" alt="${safeTitle}" 
                         class="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
-                        loading="lazy" referrerpolicy="no-referrer">
+                        loading="lazy">
                     <div class="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-60"></div>
                     <div class="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded-sm">
                         <span class="text-yellow-400">★</span> ${safeRate}
                     </div>
                     <div class="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded-sm hover:bg-[#333] transition-colors">
-                        <a href="${item.url}" target="_blank" rel="noopener noreferrer" title="在豆瓣查看" onclick="event.stopPropagation();">
+                        <a href="${url}" target="_blank" rel="noopener noreferrer" title="在豆瓣查看" onclick="event.stopPropagation();">
                             🔗
                         </a>
                     </div>
