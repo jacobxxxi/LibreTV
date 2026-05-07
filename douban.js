@@ -443,12 +443,18 @@ function renderRecommend(tag, pageLimit, pageStart) {
 
 async function fetchDoubanData(url) {
     try {
-        const response = await fetch(url, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Referer': 'https://movie.douban.com/'
-            }
-        });
+        // 通过服务器代理请求，避免CORS问题
+        const proxyUrl = `/proxy/${encodeURIComponent(url)}`;
+        
+        // 添加代理认证参数
+        const authenticatedUrl = await window.ProxyAuth.addAuthToProxyUrl(proxyUrl);
+        
+        const response = await fetch(authenticatedUrl);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         return await response.json();
     } catch (err) {
         console.error("豆瓣 API 请求失败：", err);
