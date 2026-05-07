@@ -442,17 +442,19 @@ async function renderRecommend(tag, pageLimit, pageStart) {
 
 async function fetchDoubanData(url) {
     try {
-        // 使用 allorigins.win 代理绕过CORS
-        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-        const response = await fetch(proxyUrl);
+        // 通过服务器代理请求，避免CORS问题
+        const proxyUrl = `/proxy/${encodeURIComponent(url)}`;
+        
+        // 添加代理认证参数
+        const authenticatedUrl = await window.ProxyAuth.addAuthToProxyUrl(proxyUrl);
+        
+        const response = await fetch(authenticatedUrl);
         
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         
-        const data = await response.json();
-        // allorigins.win 返回 { contents: '...' }，需要解析contents
-        return JSON.parse(data.contents);
+        return await response.json();
     } catch (err) {
         console.error("豆瓣 API 请求失败：", err);
         throw err;
@@ -484,8 +486,8 @@ async function renderDoubanCards(data, container) {
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;');
             
-            // 使用 allorigins.win/raw 代理图片，绕过防盗链
-            const proxyImageUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(item.cover)}`;
+            // 使用自己的服务器代理豆瓣图片，绕过防盗链
+            const proxyImageUrl = `/douban-image?url=${encodeURIComponent(item.cover)}`;
             const card = document.createElement("div");
             card.className = "bg-[#111] hover:bg-[#222] transition-all duration-300 rounded-lg overflow-hidden flex flex-col transform hover:scale-105 shadow-md hover:shadow-lg";
             
